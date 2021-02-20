@@ -11,7 +11,11 @@ const context = path.join(__dirname, 'src');
 // noinspection JSValidateTypes,JSUnresolvedVariable
 module.exports = {
   context,
-  entry: {},
+  entry: {
+    console: './console.ts',
+    graph: './graph.ts',
+    sandbox: './sandbox.ts',
+  },
   plugins: [
     new CleanWebpackPlugin(),
     new VueLoaderPlugin(),
