@@ -343,11 +343,15 @@
           innerRadius = halfRadius;
         } else {
           let sameTag = false;
-          for (const tag of this.selectedNode.tags) {
-            if (node.tags.includes(tag)) {
-              sameTag = true;
-              break;
+          if (node.tags.length > 0) {
+            for (const tag of this.selectedNode.tags) {
+              if (node.tags.includes(tag)) {
+                sameTag = true;
+                break;
+              }
             }
+          } else if (this.selectedNode.tags.length === 0) {
+            sameTag = true;
           }
           if (!sameTag) {
             isTransparent = true;
