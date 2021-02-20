@@ -21,8 +21,8 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GIT_CONFIG_NAME: AkrISrn
+          GIT_CONFIG_NAME: gh-actions
           BRANCH: master
-          FOLDER: dist
+          FOLDER: out
           CLEAN: false
           COMMIT_MESSAGE: build
