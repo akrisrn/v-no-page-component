@@ -141,10 +141,7 @@
       this.canvasCtx = canvas.getContext('2d')!;
       this.ticked();
 
-      if (!(await vno.waitFor(() => {
-        // noinspection BadExpressionStatementJS
-        d3;
-      }))) {
+      if ((await vno.waitFor(() => d3)) === undefined) {
         this.isError = true;
         this.ticked();
         return;
