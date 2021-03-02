@@ -39,7 +39,11 @@
       this.resize();
       vno.renderMD(vno.filePath, vno.title, this.text, false, vno.articleSelf.asyncResults).then(html => {
         this.html = html;
-        this.$nextTick(() => vno.updateDom());
+        this.$nextTick(() => {
+          if (!updateAsyncScript()) {
+            vno.updateDom();
+          }
+        });
       });
       if (!this.enableLS) {
         return;
