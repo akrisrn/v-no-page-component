@@ -83,12 +83,11 @@
     links: LinkDatum[] = [];
     linkCount: Dict<[string[], string[]]> = {};
 
+    readyUnselect = false;
     selectedNodeOrLink: NodeDatum | LinkDatum | null = null;
 
     draggedLinkSourceOffsetXY: TPoint | null = null;
     draggedLinkTargetOffsetXY: TPoint | null = null;
-
-    readyUnselect = false;
 
     get style() {
       return {
@@ -277,7 +276,7 @@
       this.drawLinkFrom(linkSource, linkTarget, isSelected, link);
     }
 
-    drawLinkFrom(source: NodeDatum, target: NodeDatum, isSelected: boolean, link?: LinkDatum) {
+    drawLinkFrom(source: NodeDatum, target: NodeDatum, isSelected: boolean, link: LinkDatum) {
       const linkAngle = Math.atan2(target.y! - source.y!, target.x! - source.x!);
       const sinLinkAngle = Math.sin(linkAngle);
       const cosLinkAngle = Math.cos(linkAngle);
