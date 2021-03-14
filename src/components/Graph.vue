@@ -1,6 +1,17 @@
 <template>
   <div id="graph" :style="style">
     <canvas ref="canvas" :height="height" :width="width"></canvas>
+    <div v-if="isShowCtxMenu" id="context-menu" :style="ctxMenuStyle" @contextmenu.prevent="">
+      <template v-for="(group, i) of filteredCtxMenuGroups">
+        <div v-for="(item, j) of group" :key="`${i}-${j}`" :class="['menu-item', { disable: item.isDisable }]"
+             @click="() => item.isDisable || item.listener()">
+          <span>{{ item.text }}</span>
+          <span v-if="item.shortcut" class="shortcut">{{ item.shortcut.text }}</span>
+        </div>
+        <hr v-if="i !== filteredCtxMenuGroups.length - 1" :key="i" :style="ctxMenuHrStyle">
+      </template>
+    </div>
+    <span id="calc-width" ref="calcSpan"></span>
   </div>
 </template>
 
@@ -34,6 +45,27 @@
 
   type TPoint = [number, number];
 
+  type Shortcut = {
+    modifier?: {
+      ctrl?: boolean;
+      alt?: boolean;
+      meta?: boolean;
+      shift?: boolean;
+
+      [index: string]: boolean | undefined;
+    };
+    key: string;
+    text?: string;
+  }
+
+  interface ContextMenuItem {
+    isShow: boolean;
+    isDisable: boolean;
+    text: string;
+    listener: () => void;
+    shortcut?: Shortcut;
+  }
+
   enum EColor {
     white = '#ffffff',
     red = '#ff3264',
@@ -45,13 +77,19 @@
     // noinspection JSUnusedGlobalSymbols
     $refs!: {
       canvas: HTMLCanvasElement;
+      calcSpan: HTMLSpanElement;
     };
 
-    isLoading = true;
+    messages: {
+      error: string
+      contextMenu: {
+        redirect: string
+      }
+    } = JSON.parse(vno.getMessage('components.graph'));
     loadingText = vno.getMessage('loading');
 
+    isLoading = true;
     isError = false;
-    errorText = vno.getMessage('components.graph.error');
 
     width = 0;
     height = 700;
@@ -89,6 +127,12 @@
     draggedLinkSourceOffsetXY: TPoint | null = null;
     draggedLinkTargetOffsetXY: TPoint | null = null;
 
+    isShowCtxMenu = false;
+    ctxMenuTop = 0;
+    ctxMenuLeft = 0;
+    ctxMenuPadding = 4;
+    ctxMenuItemHeight = 30;
+
     get style() {
       return {
         width: `${this.width}px`,
@@ -124,10 +168,78 @@
       return [this.width / 2, this.height / 2];
     }
 
+    get ctxMenuGroups(): ContextMenuItem[][] {
+      return [[{
+        isShow: true,
+        isDisable: !this.isSelectedNode || this.selectedNode.id === vno.filePath,
+        text: this.messages.contextMenu.redirect,
+        listener: this.wrapListener(() => {
+          if (this.isSelectedNode && this.selectedNode.id !== vno.filePath) {
+            vno.mainSelf.redirectTo(this.selectedNode.id);
+          }
+        }),
+        shortcut: {
+          key: 'Enter',
+        },
+      }]];
+    }
+
+    get filteredCtxMenuGroups() {
+      return this.ctxMenuGroups.map(group => group.filter(item => item.isShow)).filter(group => group.length > 0);
+    }
+
+    get ctxMenuWidth() {
+      let maxWidth = 0;
+      this.filteredCtxMenuGroups.forEach(group => {
+        group.forEach(item => {
+          let width = this.getTextWidth(item.text) + 40;
+          if (item.shortcut) {
+            width += 40;
+            let shortcutText = '';
+            const modifier = item.shortcut.modifier;
+            if (modifier) {
+              for (const key of Object.keys(modifier)) {
+                if (modifier[key]) {
+                  width += this.getTextWidth(key + '+');
+                  shortcutText += this.formatKey(key) + '+';
+                }
+              }
+            }
+            const key = item.shortcut.key;
+            width += this.getTextWidth(key);
+            shortcutText += this.formatKey(key);
+            item.shortcut.text = shortcutText;
+          }
+          if (width > maxWidth) {
+            maxWidth = width;
+          }
+        });
+      });
+      return maxWidth;
+    }
+
+    get ctxMenuStyle() {
+      return {
+        lineHeight: `${this.ctxMenuItemHeight}px`,
+        top: `${this.ctxMenuTop}px`,
+        left: `${this.ctxMenuLeft}px`,
+        width: `${this.ctxMenuWidth}px`,
+        padding: `${this.ctxMenuPadding}px 0`,
+        gridTemplateRows: `repeat(auto-fill,${this.ctxMenuItemHeight}px)`,
+      };
+    }
+
+    get ctxMenuHrStyle() {
+      return {
+        margin: `${this.ctxMenuPadding}px 0`,
+      };
+    }
+
     // noinspection JSUnusedGlobalSymbols
     created() {
       const article = document.querySelector('article')!;
       const setWidth = () => {
+        this.isShowCtxMenu = false;
         this.width = article.clientWidth - 16;
       };
       setWidth();
@@ -176,9 +288,41 @@
           .call(d3.zoom<HTMLCanvasElement, unknown>()
               .scaleExtent([1 / 10, 10])
               .on('zoom', this.zoomed))
-          .on('mousemove', this.mouseMoved);
+          .on('mousemove', this.mouseMoved)
+          .on('contextmenu', this.contextMenu);
 
-      this.initNodes().then();
+      await this.initNodes();
+
+      vno.addEventListener(document, 'keydown', (event: any) => {
+        for (const group of this.ctxMenuGroups) {
+          for (const item of group) {
+            if (!item.isShow || item.isDisable || !item.shortcut) {
+              continue;
+            }
+            let isContinue = true;
+            if (item.shortcut.modifier) {
+              for (const modifierKey of ['ctrl', 'alt', 'meta', 'shift']) {
+                const eventModifier = event[`${modifierKey}Key`] as boolean;
+                if (item.shortcut.modifier[modifierKey]) {
+                  if (!eventModifier) {
+                    isContinue = false;
+                    break;
+                  }
+                } else if (eventModifier) {
+                  isContinue = false;
+                  break;
+                }
+              }
+            } else if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+              isContinue = false;
+            }
+            if (isContinue && item.shortcut.key.toUpperCase() === event.key.toUpperCase()) {
+              item.listener();
+              return;
+            }
+          }
+        }
+      });
     }
 
     async initNodes() {
@@ -244,7 +388,7 @@
         if (this.isError) {
           this.canvasCtx.fillStyle = EColor.red;
         }
-        this.canvasCtx.fillText(this.isError ? this.errorText : this.loadingText, ...this.centerXY);
+        this.canvasCtx.fillText(this.isError ? this.messages.error : this.loadingText, ...this.centerXY);
       } else {
         this.canvasCtx.translate(this.transform.x, this.transform.y);
         this.canvasCtx.scale(this.transform.k, this.transform.k);
@@ -444,6 +588,7 @@
     }
 
     dragSubject() {
+      this.isShowCtxMenu = false;
       let nodeOrLink: NodeDatum | LinkDatum | null = this.findNode();
       if (!nodeOrLink) {
         nodeOrLink = this.findLink();
@@ -518,6 +663,54 @@
     mouseMoved() {
       const node = this.findNode();
       this.canvasCtx.canvas.title = node ? node.id : '';
+    }
+
+    contextMenu() {
+      d3.event.preventDefault();
+      let nodeOrLink: NodeDatum | LinkDatum | null = this.findNode();
+      if (nodeOrLink) {
+        this.selectedNodeOrLink = nodeOrLink;
+      } else {
+        nodeOrLink = this.findLink();
+        if (nodeOrLink) {
+          this.selectedNodeOrLink = nodeOrLink;
+        }
+      }
+      let { x, y } = d3.event;
+      const [cx, cy] = d3.mouse(this.canvasCtx.canvas);
+      const borderWidth = 1;
+      const ctxMenuWidth = this.ctxMenuWidth + borderWidth * 2;
+      const hrHeight = this.ctxMenuPadding * 2 + borderWidth;
+      const ctxMenuHeight = this.filteredCtxMenuGroups.map((group, i) => {
+        return group.length * this.ctxMenuItemHeight + (i !== this.filteredCtxMenuGroups.length - 1 ? hrHeight : 0);
+      }).reduce((a, b) => a + b, 0) + this.ctxMenuPadding * 2 + borderWidth * 2;
+      if (cx + ctxMenuWidth > this.width) {
+        x = this.width + (x - cx) - ctxMenuWidth;
+      }
+      if (cy + ctxMenuHeight > this.height) {
+        y = this.height + (y - cy) - ctxMenuHeight;
+      }
+      this.ctxMenuLeft = x;
+      this.ctxMenuTop = y + scrollY;
+      this.isShowCtxMenu = true;
+    }
+
+    wrapListener(listener: () => void) {
+      return () => {
+        listener();
+        this.isShowCtxMenu = false;
+      };
+    };
+
+    getTextWidth(text: string) {
+      this.$refs.calcSpan.innerText = text;
+      const width = this.$refs.calcSpan.clientWidth;
+      this.$refs.calcSpan.innerText = '';
+      return width;
+    }
+
+    formatKey(key: string) {
+      return key[0].toUpperCase() + key.substr(1);
     }
 
     addNode(path: string, title: string, tags?: string[]) {

@@ -5,4 +5,51 @@
   canvas {
     background-color: #ffffff;
   }
+
+  $shadow-color: rgba(#000000, 0.1);
+  $box-shadow: 0 3px 3px 0 $shadow-color, 0 3px 6px 0 $shadow-color, 0 3px 0 -3px $shadow-color;
+
+  #context-menu {
+    font-size: var(--font-size-s);
+    position: absolute;
+    display: grid;
+    border: 1px solid var(--dark-font-color);
+    background-color: #ffffff;
+    box-shadow: $box-shadow;
+
+    .menu-item {
+      padding: 0 16px;
+      user-select: none;
+
+      &:hover {
+        background-color: var(--dark-font-color);
+      }
+
+      &.disable {
+        color: var(--gray-font-color);
+
+        &:hover {
+          background-color: transparent;
+        }
+      }
+
+      .shortcut {
+        font-family: var(--mono-font-family);
+        float: right;
+        color: var(--gray-font-color);
+      }
+    }
+
+    hr {
+      max-width: 100%;
+      border-width: 1px;
+    }
+  }
+
+  #calc-width {
+    font-size: var(--font-size-s);
+    position: absolute;
+    visibility: hidden;
+    white-space: nowrap;
+  }
 }
