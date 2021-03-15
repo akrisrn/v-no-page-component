@@ -1,5 +1,5 @@
 <template>
-  <div id="graph" :style="style">
+  <div id="graph" :style="style" :class="inBlock ? 'in-block' : null">
     <canvas ref="canvas" :height="height" :width="width"></canvas>
     <div v-if="isShowCtxMenu" id="context-menu" :style="ctxMenuStyle" @contextmenu.prevent="">
       <template v-for="(group, i) of filteredCtxMenuGroups">
@@ -170,6 +170,10 @@
       return [this.width / 2, this.height / 2];
     }
 
+    get inBlock() {
+      return !!this.filePath;
+    }
+
     get isFocus() {
       return this.filePath && this.selectedNodeOrLink;
     }
@@ -254,6 +258,9 @@
       const setWidth = () => {
         this.isShowCtxMenu = false;
         this.width = article.clientWidth - 16;
+        if (this.inBlock) {
+          this.width -= 22;
+        }
       };
       setWidth();
       window.onresize = setWidth;

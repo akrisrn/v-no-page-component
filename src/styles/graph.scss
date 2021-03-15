@@ -1,6 +1,9 @@
 #graph {
   margin-bottom: 16px;
-  border: 8px rgba(var(--info-color), 0.5) double;
+
+  &:not(.in-block) {
+    border: 8px rgba(var(--info-color), 0.5) double;
+  }
 
   canvas {
     background-color: #ffffff;
