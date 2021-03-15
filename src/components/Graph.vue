@@ -133,6 +133,8 @@
     ctxMenuPadding = 4;
     ctxMenuItemHeight = 30;
 
+    filePath = '';
+
     get style() {
       return {
         width: `${this.width}px`,
@@ -166,6 +168,10 @@
 
     get centerXY(): TPoint {
       return [this.width / 2, this.height / 2];
+    }
+
+    get isFocus() {
+      return this.filePath && this.selectedNodeOrLink;
     }
 
     get ctxMenuGroups(): ContextMenuItem[][] {
@@ -237,6 +243,13 @@
 
     // noinspection JSUnusedGlobalSymbols
     created() {
+      const graph = document.querySelector('#graph');
+      if (graph) {
+        const data = graph.getAttribute('data');
+        if (data) {
+          this.filePath = decodeURIComponent(data);
+        }
+      }
       const article = document.querySelector('article')!;
       const setWidth = () => {
         this.isShowCtxMenu = false;
@@ -343,6 +356,9 @@
       }
       const source = this.addNode(path, file.flags.title, file.flags.tags);
       nodeDict[path] = source;
+      if (this.filePath && this.filePath === path) {
+        this.selectedNodeOrLink = source;
+      }
       for (const targetPath of Object.keys(file.links)) {
         const link = file.links[targetPath];
         if (!link.isMarkdown) {
@@ -443,7 +459,7 @@
           this.canvasCtx.lineTo(offsetTargetX, offsetTargetY);
         }, EColor.gray);
         this.drawLinkArrow(target, linkAngle, sinLinkAngle, cosLinkAngle);
-      }, isSelected ? 1 : this.canvasAlpha, link);
+      }, isSelected ? 1 : (this.isFocus ? 0 : this.canvasAlpha), link);
     }
 
     drawLinkArrow(target: NodeDatum, linkAngle: number, sinLinkAngle: number, cosLinkAngle: number) {
@@ -517,7 +533,7 @@
         this.drawWithAlpha(() => {
           this.canvasCtx.strokeStyle = EColor.white;
           this.canvasCtx.strokeText(text, textX, textY);
-        }, 1);
+        }, isTransparent && this.isFocus ? 0 : 1);
       }
 
       this.drawWithAlpha(() => {
@@ -538,13 +554,13 @@
         if (text) {
           this.canvasCtx.fillText(text, textX, textY);
         }
-      }, isTransparent ? this.canvasAlpha : 1, node);
+      }, isTransparent ? (this.isFocus ? 0 : this.canvasAlpha) : 1, node);
 
       this.drawWithAlpha(() => {
         this.fillWithColor(() => {
           this.canvasCtx.arc(node.x!, node.y!, innerRadius, 0, this.PI_2);
         }, EColor.white);
-      }, 0.5);
+      }, isTransparent && this.isFocus ? 0 : 0.5);
     }
 
     strokeWithColor(stroke: () => void, color: string) {
@@ -796,6 +812,9 @@
       const [x, y] = this.getCanvasXY();
       for (let i = this.nodes.length - 1; i >= 0; --i) {
         const node = this.nodes[i];
+        if (node.alpha === 0) {
+          continue;
+        }
         const dx = x - node.x!;
         if (dx > node.radius || dx < -node.radius) {
           continue;
@@ -817,6 +836,9 @@
       const [x, y] = this.getCanvasXY();
       for (let i = this.links.length - 1; i >= 0; --i) {
         const link = this.links[i];
+        if (link.alpha === 0) {
+          continue;
+        }
         const [minX, maxX] = [link.source.x!, link.target.x!].sort((a, b) => a - b);
         const offsetX = maxX - minX < this.linkWidth ? this.halfLinkWidth : 0;
         if (x > maxX + offsetX || x < minX - offsetX) {
