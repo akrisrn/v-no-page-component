@@ -253,6 +253,10 @@
         if (data) {
           this.filePath = decodeURIComponent(data);
         }
+        const height = graph.getAttribute('height');
+        if (height) {
+          this.height = parseInt(height);
+        }
       }
       const article = document.querySelector('article')!;
       const setWidth = () => {
