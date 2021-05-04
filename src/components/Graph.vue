@@ -81,12 +81,13 @@
     };
 
     messages: {
-      error: string
-      contextMenu: {
-        redirect: string
+      error?: string
+      contextMenu?: {
+        redirect?: string
       }
     } = JSON.parse(vno.getMessage('components.graph'));
     loadingText = vno.getMessage('loading');
+    noText = 'No text';
 
     isLoading = true;
     isError = false;
@@ -182,7 +183,7 @@
       return [[{
         isShow: true,
         isDisable: !this.isSelectedNode || this.selectedNode.id === vno.filePath,
-        text: this.messages.contextMenu.redirect,
+        text: (this.messages.contextMenu?.redirect ?? this.noText) || this.noText,
         listener: this.wrapListener(() => {
           if (this.isSelectedNode && this.selectedNode.id !== vno.filePath) {
             vno.mainSelf.redirectTo(this.selectedNode.id);
@@ -415,7 +416,7 @@
         if (this.isError) {
           this.canvasCtx.fillStyle = EColor.red;
         }
-        this.canvasCtx.fillText(this.isError ? this.messages.error : this.loadingText, ...this.centerXY);
+        this.canvasCtx.fillText(this.isError ? (this.messages.error || this.noText) : this.loadingText, ...this.centerXY);
       } else {
         this.canvasCtx.translate(this.transform.x, this.transform.y);
         this.canvasCtx.scale(this.transform.k, this.transform.k);
